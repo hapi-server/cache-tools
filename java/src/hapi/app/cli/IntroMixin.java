@@ -1,4 +1,4 @@
-package hapi.cache;
+package hapi.app.cli;
 
 import picocli.CommandLine.Option;
 
