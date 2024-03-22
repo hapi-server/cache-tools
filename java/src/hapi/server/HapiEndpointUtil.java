@@ -112,7 +112,11 @@ public class HapiEndpointUtil
 		// Ensure we have a valid query string
 		var queryStr = aUrl.getQuery();
 		if (queryStr == null)
+                    if ( !( aUrl.getPath().endsWith("about") 
+                            || aUrl.getPath().endsWith("capabilities") 
+                            || aUrl.getPath().endsWith("catalog") ) ) {
 			retFailL.add(ERR_FETCH_NEEDS_QUERY);
+                    }
 		else if (queryStr.isBlank() == true)
 			retFailL.add(ERR_FETCH_NEEDS_QUERY_NON_EMPTY);
 		else
