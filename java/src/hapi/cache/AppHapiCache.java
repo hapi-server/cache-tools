@@ -23,11 +23,14 @@ import picocli.CommandLineUtil;
  * @author lopeznr1
  */
 @Command(name = "hapi-cache", sortOptions = false, usageHelpWidth = 120, //
-		description = "\nApplication to interact with a HAPI cache. The following is provided:\n" + //
-				" - Log details of the local HAPI cache\n" + //
-				" - Pull remote content into the local HAPI cache\n" + //
-				" - Send to stdout a HAPI stream (from the local HAPI cache or a remote HAPI server)\n" + //
-				" - Expire stale data in the local HAPI cache\n")
+		description = """  
+                              Application to interact with a HAPI cache. The following is provided:
+                               - Log details of the local HAPI cache
+                               - Pull remote content into the local HAPI cache
+                               - Send to stdout a HAPI stream (from the local HAPI cache or a remote HAPI server)
+                               - Expire stale data in the local HAPI cache
+                              """ 
+        )
 public class AppHapiCache
 {
 	// Constants
@@ -113,7 +116,7 @@ public class AppHapiCache
 
 		// Fetch the content from the URL and return via stdout
 		var outStream = System.out;
-		try (var aInStream = tmpUrl.openStream())
+		try (var aInStream = HapiCache2024.instance().getInputStream( tmpUrl ) )
 		{
 			aInStream.transferTo(outStream);
 		}
