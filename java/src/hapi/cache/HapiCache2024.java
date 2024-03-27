@@ -9,8 +9,6 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.hapiserver.TimeUtil;
 
 /**
@@ -18,6 +16,11 @@ import org.hapiserver.TimeUtil;
  * to the original specification, but also:
  * <li> multi-parameter data gets are stored together, and stitching is no longer done
  * <li> check for direct hits: same start, stop, and parameters.
+ * This is quite simple right now, lacking original features like:
+ * <li> trim in time when a superset of the data is found (time superset)
+ * <li> trim parameters when a superset of the data is found (parameter superset)
+ * <li> break up long requests into multiple cache files (granularizing)
+ * <li> detect when one cache entry can be used to implement another (redundancy)
  * @author jbf
  */
 public class HapiCache2024 {
