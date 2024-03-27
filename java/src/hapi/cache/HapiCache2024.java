@@ -14,13 +14,21 @@ import org.hapiserver.TimeUtil;
 /**
  * Implementation of the HAPI Cache as of 2024.  This is the similar
  * to the original specification, but also:
+ * <ul>
  * <li> multi-parameter data gets are stored together, and stitching is no longer done
  * <li> check for direct hits: same start, stop, and parameters.
+ * </ul>
  * This is quite simple right now, lacking original features like:
+ * <ul>
  * <li> trim in time when a superset of the data is found (time superset)
  * <li> trim parameters when a superset of the data is found (parameter superset)
  * <li> break up long requests into multiple cache files (granularizing)
  * <li> detect when one cache entry can be used to implement another (redundancy)
+ * </ul>
+ * And new features like:
+ * <ul>
+ * <li>freshness controls 
+ * </ul>
  * @author jbf
  */
 public class HapiCache2024 {
