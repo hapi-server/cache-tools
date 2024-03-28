@@ -6,37 +6,32 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import org.hapiserver.TimeUtil;
 
 /**
- * Suppose the cache file has data from 00:00 to 24:00, and you want
- * data from 10:00 to 12:00.  This will subset a HAPI CSV in time.
+ * Suppose the cache file has Time,A,B,C and you only want Time,B.  This
+ * will subset the CSV stream.
  * @author jbf
  */
-public class TimeSubsetCsvDataInputStream extends InputStream {
+public class ParameterSubsetCsvDataInputStream extends InputStream {
 
-    InputStream ins;
     BufferedReader insb;
     String nextRec= null;
+    int[] fields;
+    int nfields;
     
     /**
      * position within the record.  Note this does not support UTF-8 extensions! TODO: support this.
      */
     int recChar=-1;
     
-    private String start;
-    private String stop;
-    
     /**
      * we need to support $Y-$j as well as $Y-$m-$d for comparisons.
      */
-    private boolean doReformatTime=true;
     Charset charset= Charset.forName("US-ASCII"); //TODO: UTF-8
         
-    public TimeSubsetCsvDataInputStream( String start, String stop, InputStream ins ) {
-        this.ins= ins;
-        this.start= start;
-        this.stop= stop;
+    public ParameterSubsetCsvDataInputStream( int[] fields, InputStream ins ) {
+        this.fields= fields;
+        this.nfields= fields.length;
         insb= new BufferedReader(new InputStreamReader(ins));
     }
 
@@ -54,21 +49,13 @@ public class TimeSubsetCsvDataInputStream extends InputStream {
         }
         boolean isRecord= nextRec.charAt(0)=='1' || nextRec.charAt(0)=='2';
         if ( isRecord ) {
-            if ( doReformatTime ) {
-                int i= nextRec.indexOf(",");
-                start= TimeUtil.reformatIsoTime( nextRec.substring(0,i), start );
-                stop= TimeUtil.reformatIsoTime( nextRec.substring(0,i), stop );
-                doReformatTime= false;
+            String[] ss= nextRec.split(",",-2);
+            StringBuilder sb= new StringBuilder(ss[0]);
+            for ( int i=1; i<nfields; i++ ) {
+                sb.append(',');
+                sb.append(ss[fields[i]]);
             }
-            while ( nextRec!=null && nextRec.compareTo(start)<0 ) {
-                nextRec= insb.readLine();
-                if ( nextRec==null ) return null;
-            }
-            if ( nextRec.substring(0,stop.length()).compareTo(stop)>=0 ) {
-                nextRec=null;
-                return null;
-            }
-            if ( !nextRec.endsWith("\n") ) nextRec= nextRec+"\n";
+            return sb.toString();
         }
         return nextRec;
     }
@@ -106,12 +93,16 @@ public class TimeSubsetCsvDataInputStream extends InputStream {
     
     @Override
     public int read() throws IOException {
-        byte[] buf= new byte[1];
-        int bytesRead= read(buf);
-        if ( bytesRead==1 ) {
-            return buf[0];
-        } else {
+        if ( recChar==nextRec.length() ) {
+            nextRec= readNextRec();
+            recChar= 0;
+        }
+        if ( nextRec==null ) {
             return -1;
+        } else {
+            char ch= nextRec.charAt(recChar);
+            recChar++;
+            return ch;
         }
     }
     
