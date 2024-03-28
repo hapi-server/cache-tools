@@ -91,9 +91,10 @@ public class HapiCache2024 {
      * TODO: this is under-implemented. For example this needs to 
      * support Windows.
      * @param url
+     * @param exact if true, then return the exact timerange, otherwise return the file containing.
      * @return 
      */
-    private String pathForUrl( HapiRequest request ) throws ParseException {
+    private String pathForUrl( HapiRequest request, boolean exact ) throws ParseException {
         String sep= File.separator;
         String host= request.url().getHost();
         if ( request.url().getPort()!=-1 ) {
@@ -119,7 +120,7 @@ public class HapiCache2024 {
             
             String year_month= String.format( "%04d"+sep+"%02d", istart[0], istart[1] );
             
-            if ( diff[0]==0 && diff[1]==0 && start.endsWith("000000Z") && stop.endsWith("000000Z") ) {
+            if ( (!exact) || ( diff[0]==0 && diff[1]==0 && start.endsWith("000000Z") && stop.endsWith("000000Z") ) ) {
                 return host + sep + path + sep
                         + fileSystemSafeDataSetName(request.dataset()) + 
                         sep + year_month + sep + start.substring(0,8) + params + "." + format;
@@ -155,13 +156,26 @@ public class HapiCache2024 {
     InputStream getInputStream(URL tmpUrl) throws IOException {
         try {
             HapiRequest request= parseHapiRequest(tmpUrl);
-            String path= pathForUrl(request);
+            String path= pathForUrl(request,true);
             File cacheFile= new File( base +  File.separator + path );
             if ( cacheFile.exists() ) {
                 return new FileInputStream(cacheFile);
             } else {
-                FileOutputStream fout= new FileOutputStream(cacheFile);
-                return new TeeInputStream(tmpUrl.openStream(),fout);
+                String path2= pathForUrl(request,false);
+                if ( path2.equals(path) ) {
+                    FileOutputStream fout= new FileOutputStream(cacheFile);
+                    return new TeeInputStream(tmpUrl.openStream(),fout);
+                } else {
+                    File cacheFile2= new File( base +  File.separator + path2 );
+                    if ( cacheFile2.exists() ) {
+                        String start= request.start();
+                        String stop= request.stop();
+                        return new TimeSubsetCsvDataInputStream( start, stop, new FileInputStream(cacheFile2) );
+                    } else {
+                        FileOutputStream fout= new FileOutputStream(cacheFile);
+                        return new TeeInputStream(tmpUrl.openStream(),fout);
+                    }
+                }
             }
         } catch (ParseException ex) {
             throw new IllegalArgumentException(ex);
