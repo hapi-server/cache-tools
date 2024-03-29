@@ -181,7 +181,7 @@ public class HapiCache2024 {
      * @param exactParams if true, then return the path with these exact parameters, otherwise return the file containing.
      * @return a CacheHit.
      */
-    private CacheHit findCacheImplementation( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
+    private CacheHit pathForUrl( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
         String sep= File.separator;
         String host= request.url().getHost();
         if ( request.url().getPort()!=-1 ) {
@@ -234,13 +234,13 @@ public class HapiCache2024 {
     InputStream getInputStream(URL tmpUrl) throws IOException {
         try {
             HapiRequest request= parseHapiRequest(tmpUrl);
-            CacheHit hit=findCacheImplementation(request,true,true);
+            CacheHit hit=pathForUrl(request,true,true);
             String path= hit.files[0];
             File cacheFile= new File( base +  File.separator + path );
             if ( cacheFile.exists() && hit.files.length==1 ) {
                 return new FileInputStream(cacheFile);
             } else {
-                CacheHit hit2=findCacheImplementation(request,false,true);
+                CacheHit hit2=pathForUrl(request,false,true);
                 String path2= hit2.files[0];
                 if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
                     maybeMkdirsForFile(cacheFile);
