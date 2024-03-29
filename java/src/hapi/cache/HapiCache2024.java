@@ -6,9 +6,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.SequenceInputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.Vector;
 import org.hapiserver.TimeUtil;
 
 /**
@@ -86,14 +90,14 @@ public class HapiCache2024 {
     }
         
     /**
-     * for a data URL, which has the most degrees of freedom, find a cache file which can be used.
+     * for a "data" URL, which has the most degrees of freedom, find a cache file which can be used.
      * @param request
      * @param exactTime
      * @param exactParams
      * @return
      * @throws ParseException 
      */
-    private String pathForUrlData( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
+    private CacheHit pathForUrlData( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
         String sep= File.separator;
         String host= request.url().getHost();
         if ( request.url().getPort()!=-1 ) {
@@ -122,25 +126,52 @@ public class HapiCache2024 {
                      + fileSystemSafeDataSetName(request.dataset()) + 
                      sep + year_month + sep;
 
-        if ( (!exactTime) || ( diff[0]==0 && diff[1]==0 && diff[2]==1 && start.endsWith("000000Z") && stop.endsWith("000000Z") ) ) {
-            return basePath + start.substring(0,8) + params + "." + format;
+        if ( diff[0]==0 && diff[1]==0 && diff[2]==1 && start.endsWith("000000Z") && stop.endsWith("000000Z") ) {
+            // it's a one-day file
+            CacheHit result= new CacheHit();
+            result.files= new String[] { basePath + start.substring(0,8) + params + "." + format };
+            result.subsetParameters= false;
+            result.subsetTime=false;
+            return result;
         } else {
-            if ( istart[0]==istop[0] && istart[1]==istop[1] ) {
+            if ( exactTime ) {
+                String file;
                 if ( params.length()>0 ) {
-                    return basePath + start + "_" + stop + params + "." + format;                
+                    file= basePath + start + "_" + stop + params + "." + format;                
                 } else {
-                    return basePath + start + "_" + stop + "." + format;
+                    file= basePath + start + "_" + stop + "." + format;
                 }
+                CacheHit result= new CacheHit();
+                result.files= new String[] { file };
+                result.subsetParameters= false;
+                result.subsetTime= true;
+                return result;
             } else {
-                if ( params.length()>0 ) {
-                    return basePath + start + "_" + stop + params + "." + format;                
-                } else {
-                    return basePath + start + "_" + stop + "." + format;
+                String start1= String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
+                    istart[0], istart[1], istart[2], 0, 0, 0 );
+                String stop1= String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
+                    istop[0], istop[1], istop[2], 0, 0, 0 );
+                String[] days= TimeUtil.countOffDays(start1, stop1);
+                for ( int i=0; i<days.length; i++ ) {
+                    days[i]= basePath + days[i].substring(0,4) + days[i].substring(5,7) + days[i].substring(8,10) + params + "." + format;  
                 }
+                CacheHit result= new CacheHit();
+                result.files= days;
+                result.subsetParameters= false;
+                result.subsetTime= true;
+                return result;
             }
         }
         
     }
+    
+    private class CacheHit {
+        String[] files=null;
+        boolean subsetTime=false;
+        boolean subsetParameters=false;
+        boolean addHeader=false;
+    }
+    
     
     /**
      * return the relative path within the cache for the URL.
@@ -148,9 +179,9 @@ public class HapiCache2024 {
      * @param url
      * @param exactTime if true, then return the exact timerange, otherwise return the file containing.
      * @param exactParams if true, then return the path with these exact parameters, otherwise return the file containing.
-     * @return 
+     * @return a CacheHit.
      */
-    private String pathForUrl( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
+    private CacheHit findCacheImplementation( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
         String sep= File.separator;
         String host= request.url().getHost();
         if ( request.url().getPort()!=-1 ) {
@@ -159,15 +190,21 @@ public class HapiCache2024 {
         host = request.url().getProtocol() + sep + host;
         String path= request.url().getPath();
         if ( path.endsWith("info") ) {
-            return host + sep + path + sep
+            path= host + sep + path + sep
                     + fileSystemSafeDataSetName(request.dataset())
                     + ".json";
         } else if ( path.endsWith("data") ) {
-            return pathForUrlData(request, exactTime, exactParams);
+            CacheHit result= pathForUrlData(request, exactTime, exactParams);
+            return result;
             
         } else {
-            return host + sep + path + ".json";
+            path= host + sep + path + ".json";
         }
+        CacheHit result= new CacheHit();
+        result.files= new String[] { path };
+        result.subsetTime= !exactTime;
+        result.subsetParameters= false;
+        return result;
     }
     
     /**
@@ -197,27 +234,38 @@ public class HapiCache2024 {
     InputStream getInputStream(URL tmpUrl) throws IOException {
         try {
             HapiRequest request= parseHapiRequest(tmpUrl);
-            String path= pathForUrl(request,true,true);
+            CacheHit hit=findCacheImplementation(request,true,true);
+            String path= hit.files[0];
             File cacheFile= new File( base +  File.separator + path );
-            if ( cacheFile.exists() ) {
+            if ( cacheFile.exists() && hit.files.length==1 ) {
                 return new FileInputStream(cacheFile);
             } else {
-                String path2= pathForUrl(request,false,true);
-                if ( path2.equals(path) ) {
+                CacheHit hit2=findCacheImplementation(request,false,true);
+                String path2= hit2.files[0];
+                if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
                     maybeMkdirsForFile(cacheFile);
                     FileOutputStream fout= new FileOutputStream(cacheFile);
                     return new TeeInputStream(tmpUrl.openStream(),fout);
                 } else {
-                    File cacheFile2= new File( base +  File.separator + path2 );
-                    if ( cacheFile2.exists() ) {
-                        String start= request.start();
-                        String stop= request.stop();
-                        return new TimeSubsetCsvDataInputStream( start, stop, new FileInputStream(cacheFile2) );
-                    } else {
-                        maybeMkdirsForFile(cacheFile);
-                        FileOutputStream fout= new FileOutputStream(cacheFile);
-                        return new TeeInputStream(tmpUrl.openStream(),fout);
+                    InputStream[] ins= new InputStream[hit2.files.length];
+                    
+                    for ( int i=0; i<hit2.files.length; i++ ) {
+                        File cacheFile2= new File( base +  File.separator + hit2.files[i] );
+                        if ( cacheFile2.exists() ) {
+                            String start= request.start();
+                            String stop= request.stop();
+                            ins[i]= new TimeSubsetCsvDataInputStream( start, stop, new FileInputStream(cacheFile2) );
+                        } else {
+                            maybeMkdirsForFile(cacheFile);
+                            FileOutputStream fout= new FileOutputStream(cacheFile);
+                            ins[i]= new TeeInputStream(tmpUrl.openStream(),fout);
+                        }
                     }
+                    Vector<InputStream> vector = new Vector<InputStream>(); // Wow Vector!  Thanks Google Gemini for saving me code
+                    for (InputStream stream : ins ) vector.add(stream);
+                    
+                    return new SequenceInputStream( vector.elements() );
+                    
                 }
             }
         } catch (ParseException ex) {
