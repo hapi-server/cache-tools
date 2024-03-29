@@ -144,7 +144,7 @@ public class HapiCache2024 {
                 CacheHit result= new CacheHit();
                 result.files= new String[] { file };
                 result.subsetParameters= false;
-                result.subsetTime= true;
+                result.subsetTime= false;
                 return result;
             } else {
                 String start1= String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
