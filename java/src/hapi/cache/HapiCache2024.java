@@ -94,7 +94,7 @@ public class HapiCache2024 {
      * @param request
      * @param exactTime
      * @param exactParams
-     * @return
+     * @return CacheHit structure showing the cache files to use, which may not necessarily be downloaded yet.
      * @throws ParseException 
      */
     private CacheHit pathForUrlData( HapiRequest request, boolean exactTime, boolean exactParams ) throws ParseException {
