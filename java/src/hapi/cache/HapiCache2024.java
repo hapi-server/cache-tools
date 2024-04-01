@@ -25,7 +25,7 @@ import org.hapiserver.TimeUtil;
  * This is quite simple right now, lacking original features like:
  * <ul>
  * <li> trim parameters when a superset of the data is found (parameter superset)
- * <li> trim data in time when cache granule contains more than the data collected.
+ * <li> trim data in time when cache granule contains more than the data requested.
  * <li> break up long requests into multiple cache files (granularizing)
  * <li> detect when one cache entry can be used to implement another (redundancy)
  * </ul>
