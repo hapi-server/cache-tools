@@ -12,7 +12,12 @@ import java.net.URL;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.hapiserver.TimeUtil;
 
 /**
@@ -51,6 +56,8 @@ public class HapiCache2024 {
 
     private HapiRequest parseHapiRequest( URL tmpUrl ) throws MalformedURLException {
         URL url= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile() );
+        int ihapi= tmpUrl.getFile().lastIndexOf( "hapi" );
+        URL host= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile().substring(0,ihapi+4) );
         String start=null,stop=null,dataset=null,parameters=null,format=null;
         String query= tmpUrl.getQuery();
         if ( query!=null ) {
@@ -74,7 +81,7 @@ public class HapiCache2024 {
                 }
             }
         }
-        return new HapiRequest(url, query, dataset, start, stop, parameters, format);
+        return new HapiRequest(url, host, query, dataset, start, stop, parameters, format);
     }
     
     /**
@@ -88,6 +95,27 @@ public class HapiCache2024 {
      */
     private String fileSystemSafeDataSetName( String dataset ) {
         return dataset.replaceAll(" ","+").replaceAll("\\.\\.+",".");
+    }
+    
+    private Map<String,String> paramSplit( String params ) {
+        String[] ss= params.split("&",-2);
+        Map<String,String> result= new LinkedHashMap<>();
+        for ( String s: ss ) {
+            int i= s.indexOf("=");
+            String n= s.substring(0,i);
+            String v= s.substring(i+1);
+            result.put(n,v);
+        }
+        return result;
+    }
+    
+    private String paramJoin( Map<String,String> params ) {
+        StringBuilder s= new StringBuilder();
+        for ( Entry<String,String> e: params.entrySet() ) {
+            s.append("&");
+            s.append(e.getKey()).append("=").append(e.getValue());
+        }
+        return s.substring(1);
     }
         
     /**
@@ -131,6 +159,7 @@ public class HapiCache2024 {
             // it's a one-day file
             CacheHit result= new CacheHit();
             result.files= new String[] { basePath + start.substring(0,8) + params + "." + format };
+            result.urls= new URL[] { request.url() };
             result.subsetParameters= false;
             result.subsetTime=false;
             return result;
@@ -144,20 +173,37 @@ public class HapiCache2024 {
                 }
                 CacheHit result= new CacheHit();
                 result.files= new String[] { file };
+                result.urls= new URL[] { request.url() };
                 result.subsetParameters= false;
                 result.subsetTime= false;
                 return result;
             } else {
                 String start1= String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
                     istart[0], istart[1], istart[2], 0, 0, 0 );
-                String stop1= String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
+                istop= TimeUtil.parseISO8601Time( TimeUtil.ceil(request.stop()) );
+                String stop1= 
+                    String.format("%04d-%02d-%02dT%02d:%02d:%02dZ", 
                     istop[0], istop[1], istop[2], 0, 0, 0 );
                 String[] days= TimeUtil.countOffDays(start1, stop1);
+                URL[] urls= new URL[days.length];
                 for ( int i=0; i<days.length; i++ ) {
-                    days[i]= basePath + days[i].substring(0,4) + days[i].substring(5,7) + days[i].substring(8,10) + params + "." + format;  
+                    String start2= days[i];
+                    String stop2= TimeUtil.nextDay(start2);
+                    String day= days[i].substring(0,4) + days[i].substring(5,7) + days[i].substring(8,10);
+                    days[i]= basePath + day + params + "." + format;  
+                    URL url= request.url();
+                    Map<String,String> pp= paramSplit(url.getQuery());
+                    pp.put( "start", start2 );
+                    pp.put( "stop", stop2);
+                    try {
+                        urls[i]= new URL( request.host() + "/data" + "?" + paramJoin(pp) );
+                    } catch (MalformedURLException ex) {
+                        Logger.getLogger(HapiCache2024.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
                 CacheHit result= new CacheHit();
                 result.files= days;
+                result.urls= urls;
                 result.subsetParameters= false;
                 result.subsetTime= true;
                 return result;
@@ -168,6 +214,7 @@ public class HapiCache2024 {
     
     private class CacheHit {
         String[] files=null;
+        URL[] urls= null;
         boolean subsetTime=false;
         boolean subsetParameters=false;
         boolean addHeader=false;
@@ -242,30 +289,26 @@ public class HapiCache2024 {
                 return new FileInputStream(cacheFile);
             } else {
                 CacheHit hit2=pathForUrl(request,false,true);
-                String path2= hit2.files[0];
                 if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
+                    File cacheFile2= new File( base +  File.separator + hit2.files[0] );
                     maybeMkdirsForFile(cacheFile);
-                    FileOutputStream fout= new FileOutputStream(cacheFile);
-                    return new TeeInputStream(tmpUrl.openStream(),fout);
+                    return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
                 } else {
-                    InputStream[] ins= new InputStream[hit2.files.length];
-                    
+                    InputStreamProvider[] ins= new InputStreamProvider[hit2.files.length];
                     for ( int i=0; i<hit2.files.length; i++ ) {
                         File cacheFile2= new File( base +  File.separator + hit2.files[i] );
                         if ( cacheFile2.exists() ) {
                             String start= request.start();
                             String stop= request.stop();
-                            ins[i]= new TimeSubsetCsvDataInputStream( start, stop, new FileInputStream(cacheFile2) );
+                            ins[i]= new TimeSubsetCsvDataInputStreamProvider( start, stop, new FileInputStreamProvider(cacheFile2) );
                         } else {
-                            maybeMkdirsForFile(cacheFile);
-                            FileOutputStream fout= new FileOutputStream(cacheFile);
-                            ins[i]= new TeeInputStream(tmpUrl.openStream(),fout);
+                            maybeMkdirsForFile(cacheFile2);
+                            
+                            ins[i]= new TeeInputStreamProvider( new URLInputStreamProvider(hit2.urls[i]),cacheFile2);
                         }
                     }
-                    Vector<InputStream> vector = new Vector<InputStream>(); // Wow Vector!  Thanks Google Gemini for saving me code
-                    for (InputStream stream : ins ) vector.add(stream);
                     
-                    return new SequenceInputStream( vector.elements() );
+                    return new ConcatenateInputStream( ins );
                     
                 }
             }
