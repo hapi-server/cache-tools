@@ -46,12 +46,12 @@ import org.hapiserver.TimeUtil;
  * @author jbf
  */
 public class HapiCache2024 {
-    private static HapiCache2024 instance= new HapiCache2024();
-    
-    File base= new File("/home/jbf/hapi"); //TODO: this will change
-    
-    public static HapiCache2024 instance() {
-        return instance;
+    // Attributes
+    private final CacheDirective cacheDirective;
+
+    /** Standard Constructor */
+    public HapiCache2024(CacheDirective aCacheDirective) {
+        cacheDirective = aCacheDirective;
     }
 
     private HapiRequest parseHapiRequest( URL tmpUrl ) throws MalformedURLException {
@@ -281,6 +281,7 @@ public class HapiCache2024 {
      */
     InputStream getInputStream(URL tmpUrl) throws IOException {
         try {
+            File base = cacheDirective.rootCacheDir();
             HapiRequest request= parseHapiRequest(tmpUrl);
             CacheHit hit=pathForUrl(request,true,true);
             String path= hit.files[0];

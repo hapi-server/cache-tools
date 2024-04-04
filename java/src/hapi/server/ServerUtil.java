@@ -1,5 +1,7 @@
 package hapi.server;
 
+import hapi.cache.CacheDirective;
+
 /**
  * Collection of utility methods to support running hapi-cache as a server.
  *
@@ -16,7 +18,7 @@ public class ServerUtil
 	 * @param aProxyAttr
 	 *    Defines the attributes associated with the proxy server.
 	 */
-	public static void startProxy(ProxyAttr aProxyAttr)
+	public static void startProxy(CacheDirective aCacheDirective, ProxyAttr aProxyAttr)
 	{
 		// Log the details of the proxy server being started
 		System.out.println("The HAPI cache-tools proxy server is starting...");

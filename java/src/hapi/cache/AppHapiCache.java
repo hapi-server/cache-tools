@@ -23,13 +23,13 @@ import picocli.CommandLineUtil;
  * @author lopeznr1
  */
 @Command(name = "hapi-cache", sortOptions = false, usageHelpWidth = 120, //
-		description = """  
+		description = """
                               Application to interact with a HAPI cache. The following is provided:
                                - Log details of the local HAPI cache
                                - Pull remote content into the local HAPI cache
                                - Send to stdout a HAPI stream (from the local HAPI cache or a remote HAPI server)
                                - Expire stale data in the local HAPI cache
-                              """ 
+                              """
         )
 public class AppHapiCache
 {
@@ -93,17 +93,19 @@ public class AppHapiCache
 		}
 
 		// Take the appropriate action
+		var cacheDirective = app.argCacheDirectiveMixin.getCacheDirective();
 		if (app.argActionMixin.fetchOnce == true)
-			fetchOnce(app.argSpecVersion, app.argFetchQueryMixin, app.isDryRun);
+			fetchOnce(cacheDirective, app.argSpecVersion, app.argFetchQueryMixin, app.isDryRun);
 		else if (app.argActionMixin.proxyAttr != null)
-			ServerUtil.startProxy(app.argActionMixin.proxyAttr);
+			ServerUtil.startProxy(cacheDirective, app.argActionMixin.proxyAttr);
 	}
 
 	/**
 	 * Utility helper method that will fetch the HAPI data (either from the cache or remote source) and return the HAPI
 	 * stream on stdout.
 	 */
-	private static void fetchOnce(SpecVersion aSpecVersion, FetchQueryMixin aFetchQueryMixin, boolean aIsDryRun)
+	private static void fetchOnce(CacheDirective aCacheDirective, SpecVersion aSpecVersion,
+			FetchQueryMixin aFetchQueryMixin, boolean aIsDryRun)
 	{
 		var tmpUrl = aFetchQueryMixin.getHapiUrl(aSpecVersion);
 
@@ -114,9 +116,13 @@ public class AppHapiCache
 			return;
 		}
 
+		// TODO: Eventually we may want to pass the HapiCache2024 in rather than create it here...
+		// Create the HapiCache2024 object.
+		var hapiCache2024 = new HapiCache2024(aCacheDirective);
+
 		// Fetch the content from the URL and return via stdout
 		var outStream = System.out;
-		try (var aInStream = HapiCache2024.instance().getInputStream( tmpUrl ) )
+		try (var aInStream = hapiCache2024.getInputStream(tmpUrl))
 		{
 			aInStream.transferTo(outStream);
 		}

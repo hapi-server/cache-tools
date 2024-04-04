@@ -3,13 +3,14 @@ package hapi.app.cli;
 import java.io.File;
 import java.time.Duration;
 
+import hapi.cache.CacheDirective;
 import picocli.CommandLine.Option;
 
 /**
  * Object which defines the (Picocli) arguments that allow specification of HAPI cache directives.
  * <p>
  * The following arguments are provided: --cache-dir, --read-cache, --write-cache, --expire-after
- * 
+ *
  * @author lopeznr1
  */
 public class CacheDirectiveMixin
@@ -31,9 +32,12 @@ public class CacheDirectiveMixin
 					+ " Delta time input: N{y, d, h, m, s} where N is number of time units and unit is one of 'year, day, hour, min, sec'")
 	private Duration expireAfterDur;
 
-	@Option(names = { "--cache-exact" }, paramLabel = "aBool", //
-			description = "Only cache exact request; Will lead to less cache hits but fast " //
-					+ "cache response if exact request is made again.")
-	private boolean cacheExact;
+	/**
+	 * Returns the {@link CacheDirective} associated with this {@link CacheDirectiveMixin}.
+	 */
+	public CacheDirective getCacheDirective()
+	{
+		return new CacheDirective(pathCacheDir, readCache, writeCache, expireAfterDur);
+	}
 
 }
