@@ -57,7 +57,8 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
 
         /**
          * read the next record within the start and stop times.
-         * @return
+         * @return the record, or null if there is not another
+         * record available.
          * @throws IOException 
          */
         private String readNextRec() throws IOException {
