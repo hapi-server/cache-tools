@@ -18,19 +18,20 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
     String start;
     String stop;
     InputStreamProvider ins;
+    int totalBytesRead;
     
     public TimeSubsetCsvDataInputStreamProvider( String start, String stop, InputStreamProvider ins ) {
         this.start= start;
         this.stop= stop;
         this.ins= ins;
+        this.totalBytesRead= 0;
     }
     @Override
     public InputStream openInputStream() throws IOException {
         return new TimeSubsetCsvDataInputStream(start, stop, ins.openInputStream() );
     }
 
-    private static class TimeSubsetCsvDataInputStream extends InputStream {
-        InputStream ins;
+    private class TimeSubsetCsvDataInputStream extends InputStream {
         BufferedReader insb;
         String nextRec= null;
 
@@ -49,7 +50,6 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
         Charset charset= Charset.forName("US-ASCII"); //TODO: UTF-8
 
         public TimeSubsetCsvDataInputStream( String start, String stop, InputStream ins ) {
-            this.ins= ins;
             this.start= start;
             this.stop= stop;
             insb= new BufferedReader(new InputStreamReader(ins));
@@ -80,7 +80,6 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
                     if ( nextRec==null ) return null;
                 }
                 if ( nextRec.substring(0,stop.length()).compareTo(stop)>=0 ) {
-                    nextRec=null;
                     return null;
                 }
                 if ( !nextRec.endsWith("\n") ) nextRec= nextRec+"\n";
@@ -90,7 +89,9 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
 
         @Override
         public int read(byte[] b) throws IOException {
-            return read( b, 0, b.length );        
+            int bytesRead= read( b, 0, b.length );        
+            //totalBytesRead+=bytesRead;
+            return bytesRead;
         }
 
 
@@ -106,6 +107,7 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
             if ( len < nextRec.length()-recChar ) {
                 System.arraycopy( nextRec.getBytes( charset ), recChar, b, off, len );
                 recChar= recChar + b.length;
+                totalBytesRead+=len;
                 return len;
             } else {
                 int ll= Math.min( len, nextRec.length()-recChar );
@@ -115,6 +117,7 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
                     nextRec= readNextRec();
                     recChar= 0;
                 }
+                totalBytesRead+=ll;
                 return ll;
             }        
         }
@@ -124,11 +127,22 @@ public class TimeSubsetCsvDataInputStreamProvider implements InputStreamProvider
             byte[] buf= new byte[1];
             int bytesRead= read(buf);
             if ( bytesRead==1 ) {
+                totalBytesRead+=bytesRead;
                 return buf[0];
             } else {
                 return -1;
             }
         }
+
+        @Override
+        public void close() throws IOException {
+            String s= insb.readLine();
+            while ( s!=null ) { // empty the input, since it might be reading from a URL and Teeing to the cache.
+                s= insb.readLine();
+            }
+            insb.close();
+        }
+        
     }
     
 }

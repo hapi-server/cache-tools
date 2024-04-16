@@ -15,9 +15,12 @@ public class TeeInputStreamProvider implements InputStreamProvider {
 
     InputStreamProvider ins;
     File out; //TODO: This needs a temporary file, at least
+    int totalBytesRead;
     
     public TeeInputStreamProvider( InputStreamProvider ins, File out ) {
         this.ins= ins;
+        this.out= out;
+        this.totalBytesRead=0;
     }
     
     @Override
@@ -25,7 +28,7 @@ public class TeeInputStreamProvider implements InputStreamProvider {
         return new TeeInputStream( ins.openInputStream(), new FileOutputStream(out) );
     }
     
-    private static class TeeInputStream extends InputStream {
+    private class TeeInputStream extends InputStream {
 
         private final OutputStream out;
         private final InputStream ins;
@@ -40,20 +43,27 @@ public class TeeInputStreamProvider implements InputStreamProvider {
         public int read() throws IOException {
             int i= ins.read();
             out.write(i);
+            totalBytesRead++;
             return i;
         }
 
         @Override
         public int read(byte[] b) throws IOException {
             int bytesRead= ins.read(b);
-            if ( bytesRead>0 ) out.write(b,0,bytesRead);
+            if ( bytesRead>0 ) {
+                out.write(b,0,bytesRead);
+                totalBytesRead+=bytesRead;
+            }
             return bytesRead;
         }
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
             int bytesRead= ins.read(b,off,len);
-            if ( bytesRead>0 ) out.write(b,off,bytesRead);
+            if ( bytesRead>0 ) {
+                out.write(b,off,bytesRead);
+                totalBytesRead+=bytesRead;
+            }
             return bytesRead;
         }
 

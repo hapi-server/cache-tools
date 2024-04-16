@@ -3,19 +3,16 @@ package hapi.cache;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.SequenceInputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Enumeration;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.hapiserver.TimeUtil;
@@ -48,10 +45,21 @@ import org.hapiserver.TimeUtil;
 public class HapiCache2024 {
     // Attributes
     private final CacheDirective cacheDirective;
+    private final long lastModifiedRequirement;
 
-    /** Standard Constructor */
+    /** 
+     * Standard Constructor
+     * @param aCacheDirective controls for cache operation
+     */
     public HapiCache2024(CacheDirective aCacheDirective) {
         cacheDirective = aCacheDirective;
+        Duration d= cacheDirective.expireAfterDur();
+        if ( d!=null ) {
+            lastModifiedRequirement =  Instant.now().toEpochMilli() 
+                - cacheDirective.expireAfterDur().getSeconds()*1000 - cacheDirective.expireAfterDur().getNano()/1000000;
+        } else {
+            lastModifiedRequirement = Long.MIN_VALUE;
+        }
     }
 
     private HapiRequest parseHapiRequest( URL tmpUrl ) throws MalformedURLException {
@@ -286,30 +294,37 @@ public class HapiCache2024 {
             CacheHit hit=pathForUrl(request,true,true);
             String path= hit.files[0];
             File cacheFile= new File( base +  File.separator + path );
-            if ( cacheFile.exists() && hit.files.length==1 ) {
+            if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
                 return new FileInputStream(cacheFile);
             } else {
                 CacheHit hit2=pathForUrl(request,false,true);
                 if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
                     File cacheFile2= new File( base +  File.separator + hit2.files[0] );
-                    maybeMkdirsForFile(cacheFile);
-                    return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
+                    if ( cacheFile2.exists() && cacheFile.lastModified()>lastModifiedRequirement ) {
+                        maybeMkdirsForFile(cacheFile);
+                        return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
+                    } else {
+                        maybeMkdirsForFile(cacheFile2);
+                        return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
+                    }
                 } else {
                     InputStreamProvider[] ins= new InputStreamProvider[hit2.files.length];
                     for ( int i=0; i<hit2.files.length; i++ ) {
                         File cacheFile2= new File( base +  File.separator + hit2.files[i] );
-                        if ( cacheFile2.exists() ) {
-                            String start= request.start();
-                            String stop= request.stop();
+                        String start= request.start();
+                        String stop= request.stop();
+                        if ( cacheFile2.exists() && cacheFile2.lastModified()>lastModifiedRequirement ) {
                             ins[i]= new TimeSubsetCsvDataInputStreamProvider( start, stop, new FileInputStreamProvider(cacheFile2) );
                         } else {
                             maybeMkdirsForFile(cacheFile2);
-                            
-                            ins[i]= new TeeInputStreamProvider( new URLInputStreamProvider(hit2.urls[i]),cacheFile2);
+                            ins[i]= new TimeSubsetCsvDataInputStreamProvider( start, stop, new TeeInputStreamProvider( new URLInputStreamProvider(hit2.urls[i]),cacheFile2) );
                         }
                     }
-                    
-                    return new ConcatenateInputStream( ins );
+                    if ( ins.length==1 ) {
+                        return ins[0].openInputStream();
+                    } else {
+                        return new ConcatenateInputStream( ins );
+                    }
                     
                 }
             }
