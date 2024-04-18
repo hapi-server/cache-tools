@@ -281,13 +281,62 @@ public class HapiCache2024 {
     }
     
     /**
+     * return an InputStream for the URL.  This might come from the remote site or from a locally cached file.
+     * @param tmpUrl
+     * @return
+     * @throws IOException 
+     */
+    protected InputStream getInputStream( URL tmpUrl ) throws IOException {
+        HapiRequest request= parseHapiRequest(tmpUrl);
+        String path= request.url().getPath();
+        
+        if ( path.endsWith("data") ) {
+            return getInputStreamCSV(tmpUrl);
+            
+        } else if ( path.endsWith("info") ) {
+            try {
+                CacheHit hit= pathForUrl( request, false, false );
+                assert ( hit.files.length!=1 );
+                File base = cacheDirective.rootCacheDir();
+                File cacheFile= new File( base +  File.separator + hit.files[0] );
+                if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
+                    return new FileInputStream(cacheFile);
+                } else {
+                    maybeMkdirsForFile(cacheFile);
+                    return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile ).openInputStream();
+                }
+            } catch ( ParseException ex ) {
+                throw new IllegalArgumentException(ex);
+            }
+        } else if ( path.endsWith("catalog") || path.endsWith("capabilities") ||  path.endsWith("about") ) {
+            try {
+                CacheHit hit= pathForUrl( request, false, false );
+                assert ( hit.files.length!=1 );
+                File base = cacheDirective.rootCacheDir();
+                File cacheFile= new File( base +  File.separator + hit.files[0] );
+                if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
+                    return new FileInputStream(cacheFile);
+                } else {
+                    maybeMkdirsForFile(cacheFile);
+                    return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile ).openInputStream();
+                }
+            } catch ( ParseException ex ) {
+                throw new IllegalArgumentException(ex);
+            }
+        } else {
+            throw new IllegalArgumentException("not supported: "+path);
+        }
+        
+    }
+    
+    /**
      * return the InputStream for the URL.  This might be sourced by URL.getInputStream, or
      * maybe from files, or a combination of both.
      * @param tmpUrl
      * @return
      * @throws IOException 
      */
-    InputStream getInputStream(URL tmpUrl) throws IOException {
+    private InputStream getInputStreamCSV(URL tmpUrl) throws IOException {
         try {
             File base = cacheDirective.rootCacheDir();
             HapiRequest request= parseHapiRequest(tmpUrl);

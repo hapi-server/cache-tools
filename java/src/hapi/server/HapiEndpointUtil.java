@@ -109,14 +109,17 @@ public class HapiEndpointUtil
 		if (pathStr.contains("/hapi/") == false)
 			retFailL.add(ERR_FETCH_NEEDS_HAPI_PATH);
 
+        if ( aUrl.getPath().endsWith("about") 
+                            || aUrl.getPath().endsWith("capabilities") 
+                            || aUrl.getPath().endsWith("catalog") ) {
+            return retFailL;
+        }
+            
 		// Ensure we have a valid query string
 		var queryStr = aUrl.getQuery();
 		if (queryStr == null)
-                    if ( !( aUrl.getPath().endsWith("about") 
-                            || aUrl.getPath().endsWith("capabilities") 
-                            || aUrl.getPath().endsWith("catalog") ) ) {
 			retFailL.add(ERR_FETCH_NEEDS_QUERY);
-                    }
+                    
 		else if (queryStr.isBlank() == true)
 			retFailL.add(ERR_FETCH_NEEDS_QUERY_NON_EMPTY);
 		else
@@ -152,6 +155,8 @@ public class HapiEndpointUtil
 				{
 					if (aToken.startsWith("dataset=") == true)
 						cntId++;
+                    else if (aToken.startsWith("id=") ==true ) 
+                        cntId++;
 					else if (aToken.startsWith("start=") == true)
 						cntTimeMin++;
 					else if (aToken.startsWith("stop=") == true)
