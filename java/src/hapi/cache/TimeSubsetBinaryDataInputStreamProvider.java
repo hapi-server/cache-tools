@@ -1,11 +1,11 @@
 
 package hapi.cache;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.hapiserver.TimeUtil;
 
 /**
@@ -19,29 +19,38 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
     String stop;
     InputStreamProvider ins;
     int totalBytesRead;
+    JSONObject info;
     
-    public TimeSubsetBinaryDataInputStreamProvider( String start, String stop, InputStreamProvider ins ) {
+    public TimeSubsetBinaryDataInputStreamProvider( JSONObject info, String start, String stop, InputStreamProvider ins ) {
         this.start= start;
         this.stop= stop;
         this.ins= ins;
         this.totalBytesRead= 0;
+        this.info= info;
     }
     @Override
     public InputStream openInputStream() throws IOException {
-        return new TimeSubsetCsvDataInputStream(start, stop, ins.openInputStream() );
+        try {
+            return new TimeSubsetBinaryDataInputStream(info,start, stop, ins.openInputStream() );
+        } catch (JSONException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
-    private class TimeSubsetCsvDataInputStream extends InputStream {
-        BufferedReader insb;
-        String nextRec= null;
+    private class TimeSubsetBinaryDataInputStream extends InputStream {
+        InputStream ins;
+        byte[] nextRec= null;
 
         /**
          * position within the record.  Note this does not support UTF-8 extensions! TODO: support this.
          */
         int recChar=-1;
 
-        private String start;
-        private String stop;
+        private byte[] start;
+        private byte[] stop;
+        
+        private JSONObject info;
+        private int timeLength;
 
         /**
          * we need to support $Y-$j as well as $Y-$m-$d for comparisons.
@@ -49,41 +58,66 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
         private boolean doReformatTime=true;
         Charset charset= Charset.forName("US-ASCII"); //TODO: UTF-8
 
-        public TimeSubsetCsvDataInputStream( String start, String stop, InputStream ins ) {
-            this.start= start;
-            this.stop= stop;
-            insb= new BufferedReader(new InputStreamReader(ins));
+        public TimeSubsetBinaryDataInputStream( JSONObject info, String start, String stop, InputStream ins ) throws JSONException {
+            this.start= start.getBytes();
+            this.stop= stop.getBytes();
+            this.ins= ins;
+            this.info= info;
+            timeLength= info.getJSONArray("parameters").getJSONObject(0).getInt("length");
         }
 
+        /**
+         * read the next record within the start and stop times.
+         * @return
+         * @throws IOException 
+         */
+        private byte[] readNextRecAny() throws IOException {
+            int bytesRead=0;
+            while ( bytesRead<nextRec.length ) {
+                int b= ins.read(nextRec,bytesRead,nextRec.length-bytesRead);
+                if ( b==-1 ) return null;
+                bytesRead+= b;
+            }
+            return nextRec;
+        }
+    
+        int compare( byte[] nextRec, byte[] time ) {
+            int n= Math.min( nextRec.length, time.length );
+            for ( int i=0; i<n; i++ ) {
+                int diff= nextRec[i] - time[i];
+                if ( diff!=0 ) {
+                    return diff;
+                }
+            }
+            return 0;
+        }
+        
         /**
          * read the next record within the start and stop times.
          * @return the record, or null if there is not another
          * record available.
          * @throws IOException 
          */
-        private String readNextRec() throws IOException {
-            nextRec= insb.readLine();
+        private byte[] readNextRec() throws IOException {
+            nextRec= readNextRecAny();
             if ( nextRec==null ) return null;
-            nextRec= nextRec+"\n"; // bah copy TODO: inefficiencies 
-            if ( nextRec.length()==1 ) {
-                return nextRec;
-            }
-            boolean isRecord= nextRec.charAt(0)=='1' || nextRec.charAt(0)=='2';
+
+            boolean isRecord= nextRec[0]=='1' || nextRec[0]=='2'; // 1999 or 2000 or ...
             if ( isRecord ) {
                 if ( doReformatTime ) {
-                    int i= nextRec.indexOf(",");
-                    start= TimeUtil.reformatIsoTime( nextRec.substring(0,i), start );
-                    stop= TimeUtil.reformatIsoTime( nextRec.substring(0,i), stop );
+                    int i= timeLength;
+                    String atime= new String( nextRec, 0, i );
+                    start= TimeUtil.reformatIsoTime( atime, new String(start,"UTF-8") ).getBytes();
+                    stop= TimeUtil.reformatIsoTime( atime, new String(stop,"UTF-8") ).getBytes();
                     doReformatTime= false;
                 }
-                while ( nextRec!=null && nextRec.compareTo(start)<0 ) {
-                    nextRec= insb.readLine();
+                while ( nextRec!=null && compare( nextRec, start )<0 ) {
+                    nextRec= readNextRecAny();
                     if ( nextRec==null ) return null;
                 }
-                if ( nextRec.substring(0,stop.length()).compareTo(stop)>=0 ) {
+                if ( compare( nextRec, stop )>=0 ) {
                     return null;
                 }
-                if ( !nextRec.endsWith("\n") ) nextRec= nextRec+"\n";
             }
             return nextRec;
         }
@@ -105,16 +139,16 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
             if ( nextRec==null ) {
                 return -1;
             }
-            if ( len < nextRec.length()-recChar ) {
-                System.arraycopy( nextRec.getBytes( charset ), recChar, b, off, len );
+            if ( len < nextRec.length-recChar ) {
+                System.arraycopy( nextRec, recChar, b, off, len );
                 recChar= recChar + b.length;
                 totalBytesRead+=len;
                 return len;
             } else {
-                int ll= Math.min( len, nextRec.length()-recChar );
-                System.arraycopy( nextRec.getBytes( charset ), recChar, b, off, ll );
+                int ll= Math.min( len, nextRec.length-recChar );
+                System.arraycopy( nextRec, recChar, b, off, ll );
                 recChar= recChar+ll;
-                if ( recChar==nextRec.length() ) {
+                if ( recChar==nextRec.length ) {
                     nextRec= readNextRec();
                     recChar= 0;
                 }
@@ -137,11 +171,11 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
 
         @Override
         public void close() throws IOException {
-            String s= insb.readLine();
-            while ( s!=null ) { // empty the input, since it might be reading from a URL and Teeing to the cache.
-                s= insb.readLine();
+            int ch= ins.read();
+            while ( ch!=-1 ) { // empty the input, since it might be reading from a URL and Teeing to the cache.
+                ch= ins.read();
             }
-            insb.close();
+            ins.close();
         }
         
     }
