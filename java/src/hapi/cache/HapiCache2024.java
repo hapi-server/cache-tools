@@ -361,21 +361,35 @@ public class HapiCache2024 {
                 if ( "header".equals(request.include()) ) {
                     URL headerUrl= infoForData(request);
                     InputStream ins= getInputStream(headerUrl);
+                    String[] parameters;
+                    if ( request.parameters()==null ) {
+                        parameters= null;
+                    } else {
+                        parameters= request.parameters().split(",");
+                    }
                     return new ConcatenateInputStream( 
-                        new PrepHeaderInputStreamProvider(null,true,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
+                        new PrepHeaderInputStreamProvider(parameters,true,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
                 } else {
                     return new FileInputStream(cacheFile);
                 }
             } else {
                 CacheHit hit2=pathForUrl(request,false,true);
+                StringBuilder sdataUrl= new StringBuilder( request.host().toString() );
+                sdataUrl.append("/data?id=").append(request.dataset())
+                    .append("&start=").append(request.start())
+                    .append("&stop=").append(request.stop());
+                if ( request.parameters()!=null ) {
+                    sdataUrl.append("&parameters=").append(request.parameters());
+                }
+                URL dataUrl= new URL(sdataUrl.toString());
                 if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
                     File cacheFile2= new File( base +  File.separator + hit2.files[0] );
                     if ( cacheFile2.exists() && cacheFile.lastModified()>lastModifiedRequirement ) {
                         maybeMkdirsForFile(cacheFile);
-                        return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
+                        return new TeeInputStreamProvider( new URLInputStreamProvider(dataUrl),cacheFile2 ).openInputStream();
                     } else {
                         maybeMkdirsForFile(cacheFile2);
-                        return new TeeInputStreamProvider( new URLInputStreamProvider(tmpUrl),cacheFile2 ).openInputStream();
+                        return new TeeInputStreamProvider( new URLInputStreamProvider(dataUrl),cacheFile2 ).openInputStream();
                     }
                 } else {
                     InputStreamProvider[] ins= new InputStreamProvider[hit2.files.length];

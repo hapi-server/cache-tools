@@ -36,7 +36,7 @@ public class PrepHeaderInputStreamProvider implements InputStreamProvider {
                 JSONArray parameters= jo.getJSONArray("parameters");
                 JSONArray newParameters= new JSONArray();
                 int ip=0;
-                for ( int i=0; i<parameters.length(); i++ ) {
+                for ( int i=0; ip<parameterNames.length && i<parameters.length(); i++ ) {
                     JSONObject parameterObject= parameters.getJSONObject(i);
                     if ( parameterObject.getString("name").equals(parameterNames[ip]) ) {
                         newParameters.put(ip,parameterObject);

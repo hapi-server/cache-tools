@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.net.URL;
 
 /**
- *
  * @author jbf
  */
 public class URLInputStreamProvider implements InputStreamProvider {
