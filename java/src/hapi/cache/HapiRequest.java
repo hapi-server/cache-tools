@@ -15,6 +15,7 @@ public record HapiRequest (
         String start, 
         String stop, 
         String parameters, 
-        String format ) {
+        String format,
+        String include) {
     
 }

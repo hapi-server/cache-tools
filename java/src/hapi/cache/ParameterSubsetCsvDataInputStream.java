@@ -29,6 +29,11 @@ public class ParameterSubsetCsvDataInputStream extends InputStream {
      */
     Charset charset= Charset.forName("US-ASCII"); //TODO: UTF-8
         
+    /**
+     * 
+     * @param fields fields of the original record to transmit
+     * @param ins 
+     */
     public ParameterSubsetCsvDataInputStream( int[] fields, InputStream ins ) {
         this.fields= fields;
         this.nfields= fields.length;

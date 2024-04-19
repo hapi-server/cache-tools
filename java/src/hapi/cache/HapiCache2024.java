@@ -66,7 +66,7 @@ public class HapiCache2024 {
         URL url= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile() );
         int ihapi= tmpUrl.getFile().lastIndexOf( "hapi" );
         URL host= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile().substring(0,ihapi+4) );
-        String start=null,stop=null,dataset=null,parameters=null,format=null;
+        String start=null,stop=null,dataset=null,parameters=null,format=null,include=null;
         String query= tmpUrl.getQuery();
         if ( query!=null ) {
             String[] ss= query.split("&");
@@ -85,11 +85,12 @@ public class HapiCache2024 {
                     case "dataset", "id" -> dataset= v;
                     case "parameters" -> parameters= v;
                     case "format" -> format= v;
+                    case "include" -> include= v;
                     default -> throw new IllegalArgumentException("unsupported argument: "+s);
                 }
             }
         }
-        return new HapiRequest(url, host, query, dataset, start, stop, parameters, format);
+        return new HapiRequest(url, host, query, dataset, start, stop, parameters, format, include);
     }
     
     /**
@@ -330,6 +331,19 @@ public class HapiCache2024 {
     }
     
     /**
+     * return the info URL for the data request
+     * @param request
+     * @return 
+     */
+    private URL infoForData(HapiRequest request) {
+        try {
+            return new URL( request.host() + "/info?id="+request.dataset() );
+        } catch (MalformedURLException ex) {
+            throw new IllegalArgumentException("unable to form URL");
+        }
+    }
+    
+    /**
      * return the InputStream for the URL.  This might be sourced by URL.getInputStream, or
      * maybe from files, or a combination of both.
      * @param tmpUrl
@@ -344,7 +358,14 @@ public class HapiCache2024 {
             String path= hit.files[0];
             File cacheFile= new File( base +  File.separator + path );
             if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
-                return new FileInputStream(cacheFile);
+                if ( "header".equals(request.include()) ) {
+                    URL headerUrl= infoForData(request);
+                    InputStream ins= getInputStream(headerUrl);
+                    return new ConcatenateInputStream( 
+                        new PrepHeaderInputStreamProvider(null,true,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
+                } else {
+                    return new FileInputStream(cacheFile);
+                }
             } else {
                 CacheHit hit2=pathForUrl(request,false,true);
                 if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
