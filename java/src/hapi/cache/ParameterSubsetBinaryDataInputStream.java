@@ -1,16 +1,9 @@
 
 package hapi.cache;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.util.Collections;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
@@ -45,11 +38,7 @@ public class ParameterSubsetBinaryDataInputStream extends InputStream {
         this.fields= fields;
         this.nfields= fields.length;
         this.ins= ins;
-        try {
-            nextRec= new byte[ HapiUtil.bytesPerRec(info) ];
-        } catch (JSONException ex) {
-            throw new RuntimeException(ex);
-        }
+        nextRec= new byte[ HapiUtil.bytesPerRec(info) ];
     }
 
     /**

@@ -145,6 +145,8 @@ public class HapiEndpointUtil
 						; // cntParms++;
 					else if (aToken.startsWith("include=") == true)
 						; // cntIgnored++;
+					else if (aToken.startsWith("format=") == true)
+                        ;
 					else
 						unknownL.add(aToken.split("=")[0]);
 				}
@@ -165,6 +167,8 @@ public class HapiEndpointUtil
 						; // cntParms++;
 					else if (aToken.startsWith("include=") == true)
 						; // cntIgnored++;
+					else if (aToken.startsWith("format=") == true)
+                        ;                    
 					else
 						unknownL.add(aToken.split("=")[0]);
 				}
