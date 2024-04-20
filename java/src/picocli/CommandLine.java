@@ -1151,7 +1151,7 @@ public class CommandLine {
      * or programmatically (e.g. {@link CommandSpec#exitCodeOnInvalidInput(int)}).</p>
      * <p>Additionally, there are several mechanisms for commands to return custom exit codes.
      * See the javadoc of the {@link #execute(String...) execute} method for details.</p>
-     * <h3>Standard Exit Codes</h3>
+     * <b>Standard Exit Codes</b>
      * <p>There are a few conventions, but there is <a href="https://stackoverflow.com/questions/1101957/are-there-any-standard-exit-status-codes-in-linux/40484670#40484670">no
      * standard</a>. The specific set of codes returned is unique to the program that sets it.
      * Typically an exit code of zero indicates success, any non-zero exit code indicates failure. For reference, here are a few conventions:</p>
@@ -1161,7 +1161,7 @@ public class CommandLine {
      *   <li><a href="https://www.freebsd.org/cgi/man.cgi?query=sysexits&amp;sektion=3">FreeBSD exit codes</a></li>
      *   <li><a href="http://www.hiteksoftware.com/knowledge/articles/049.htm">Windows exit codes</a></li>
      * </ul>
-     * <h3>Valid Ranges</h3>
+     * <b>Valid Ranges</b>
      * <p>Note that *nix shells may restrict exit codes to the 0-255 range, DOS seems to allow larger numbers.
      * See this <a href="https://stackoverflow.com/questions/179565/exitcodes-bigger-than-255-possible">StackOverflow question</a>.</p>
      * @since 4.0 */
@@ -4573,8 +4573,8 @@ public class CommandLine {
          * Applications may be interested in the following built-in commands in picocli
          * that can be used as subcommands:
          * <ul>
-         *   <li>{@link HelpCommand} - a {@code help} subcommand that prints help on the following or preceding command</li>
-         *   <li>{@link AutoComplete.GenerateCompletion} - a {@code generate-completion} subcommand that prints a Bash/ZSH completion script for its parent command, so that clients can install autocompletion in one line by running {@code source <(parent-command generate-completion)} in the shell</li>
+         *   <li>HelpCommand - a {@code help} subcommand that prints help on the following or preceding command</li>
+         *   <li>AutoComplete.GenerateCompletion - a {@code generate-completion} subcommand that prints a Bash/ZSH completion script for its parent command, so that clients can install autocompletion in one line by running {@code source <(parent-command generate-completion)} in the shell</li>
          * </ul>
          * @return the declaratively registered subcommands of this command, or an empty array if none
          * @see CommandLine#addSubcommand(String, Object)
