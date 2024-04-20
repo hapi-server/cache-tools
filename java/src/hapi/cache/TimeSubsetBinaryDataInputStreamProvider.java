@@ -72,6 +72,10 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
          * @throws IOException 
          */
         private byte[] readNextRecAny() throws IOException {
+            if ( nextRec==null ) {
+                int reclength= HapiUtil.bytesPerRec(this.info);
+                nextRec= new byte[reclength];
+            }
             int bytesRead=0;
             while ( bytesRead<nextRec.length ) {
                 int b= ins.read(nextRec,bytesRead,nextRec.length-bytesRead);

@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.hapiserver.TimeUtil;
 
 /**
@@ -291,7 +293,14 @@ public class HapiCache2024 {
         String path= request.url().getPath();
         
         if ( path.endsWith("data") ) {
-            return getInputStreamCSV(tmpUrl);
+            switch (request.format()) {
+                case "csv":
+                    return getInputStreamCSV(tmpUrl);
+                case "binary":
+                    return getInputStreamBinary(tmpUrl);
+                default:
+                    throw new IllegalArgumentException("unsupported format exception: "+request.format());
+            }
             
         } else if ( path.endsWith("info") ) {
             try {
@@ -327,6 +336,13 @@ public class HapiCache2024 {
             throw new IllegalArgumentException("not supported: "+path);
         }
         
+    }
+    
+    private String infoJsonForData( HapiRequest request ) throws IOException {
+        URL infoUrl= infoForData(request);
+        InputStream ins= infoUrl.openStream();
+        byte[] infoBytes= ins.readAllBytes();
+        return new String( infoBytes, "UTF-8" );
     }
     
     /**
@@ -425,4 +441,97 @@ public class HapiCache2024 {
             throw new IllegalArgumentException(ex);
         }
     }
+    
+    /**
+     * return the InputStream for the URL.  This might be sourced by URL.getInputStream, or
+     * maybe from files, or a combination of both.
+     * @param tmpUrl
+     * @return
+     * @throws IOException 
+     */
+    private InputStream getInputStreamBinary(URL tmpUrl) throws IOException {
+        try {
+            File base = cacheDirective.rootCacheDir();
+            HapiRequest request= parseHapiRequest(tmpUrl);
+            String[] parameters;
+            if ( request.parameters()==null ) {
+                parameters= null;
+            } else {
+                parameters= request.parameters().split(",");
+            }
+            CacheHit hit=pathForUrl(request,true,true);
+            String path= hit.files[0];
+            File cacheFile= new File( base +  File.separator + path );
+            if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
+                if ( "header".equals(request.include()) ) {
+                    URL headerUrl= infoForData(request);
+                    InputStream ins= getInputStream(headerUrl);
+                    return new ConcatenateInputStream( 
+                        new PrepHeaderInputStreamProvider(parameters,false,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
+                } else {
+                    return new FileInputStream(cacheFile);
+                }
+            } else {
+                CacheHit hit2=pathForUrl(request,false,true);
+                StringBuilder sdataUrl= new StringBuilder( request.host().toString() );
+                sdataUrl.append("/data?id=").append(request.dataset())
+                    .append("&format=").append(request.format())
+                    .append("&start=").append(request.start())
+                    .append("&stop=").append(request.stop());
+                if ( request.parameters()!=null ) {
+                    sdataUrl.append("&parameters=").append(request.parameters());
+                }
+                InputStreamProvider[] ins= new InputStreamProvider[hit2.files.length];;
+                URL dataUrl= new URL(sdataUrl.toString());
+                if ( hit2.files.length==1 && hit2.subsetTime==false && hit2.subsetParameters==false ) {
+                    File cacheFile2= new File( base +  File.separator + hit2.files[0] );
+                    if ( cacheFile2.exists() && cacheFile.lastModified()>lastModifiedRequirement ) {
+                        maybeMkdirsForFile(cacheFile);
+                        ins[0]= new TeeInputStreamProvider( new URLInputStreamProvider(dataUrl),cacheFile2 ); //TODO: huh?
+                    } else {
+                        maybeMkdirsForFile(cacheFile2);
+                        ins[0]= new TeeInputStreamProvider( new URLInputStreamProvider(dataUrl),cacheFile2 );
+                    }
+                } else {
+                    String infoJson= infoJsonForData(request);
+                    JSONObject info;
+                    try {
+                        info = new JSONObject(infoJson);
+                    } catch (JSONException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    for ( int i=0; i<hit2.files.length; i++ ) {
+                        File cacheFile2= new File( base +  File.separator + hit2.files[i] );
+                        String start= request.start();
+                        String stop= request.stop();
+                        if ( cacheFile2.exists() && cacheFile2.lastModified()>lastModifiedRequirement ) {
+                            ins[i]= new TimeSubsetBinaryDataInputStreamProvider( info, start, stop, new FileInputStreamProvider(cacheFile2) );
+                        } else {
+                            maybeMkdirsForFile(cacheFile2);
+                            ins[i]= new TimeSubsetBinaryDataInputStreamProvider( info, start, stop, new TeeInputStreamProvider( new URLInputStreamProvider(hit2.urls[i]),cacheFile2) );
+                        }
+                    }
+                }
+                
+                if ( "header".equals(request.include()) ) {
+                    InputStreamProvider[] ins2= new InputStreamProvider[1+hit2.files.length];
+                    URL headerUrl= infoForData(request);
+                    InputStream headerIns= getInputStream(headerUrl);
+                    ins2[0]= new PrepHeaderInputStreamProvider(parameters,true,headerIns);
+                    System.arraycopy(ins, 0, ins2, 1, ins.length);
+                    ins= ins2;
+                }
+
+                if ( ins.length==1 ) {
+                    return ins[0].openInputStream();
+                } else {
+                    return new ConcatenateInputStream( ins );
+                }
+                    
+            }
+        } catch (ParseException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
+    
 }

@@ -34,45 +34,6 @@ public class ParameterSubsetBinaryDataInputStream extends InputStream {
      * we need to support $Y-$j as well as $Y-$m-$d for comparisons.
      */
     Charset charset= Charset.forName("US-ASCII"); //TODO: UTF-8
-     
-    /**
-     * return the number of bytes each record of the info will take.
-     * @param info
-     * @return
-     * @throws JSONException 
-     */
-    protected static int bytesPerRec( JSONObject info ) throws JSONException {
-        int recordLengthBytes = 0;
-
-        JSONArray pds= info.getJSONArray("parameters");
-        
-        for (int i = 0; i < pds.length(); i++) {
-            try {
-                JSONObject param= pds.getJSONObject(i);
-                String type= param.getString("type");
-                int length= param.optInt("length",1);
-                if ( param.has("size") ) {
-                    JSONArray dims= param.getJSONArray("size");
-                    for ( int j=0; j<dims.length(); j++ ) {
-                        length= length * dims.getInt(j);
-                    }
-                }
-                if ( type.equals("isotime") ) {
-                    recordLengthBytes += length;
-                } else if ( type.equals("string") ) {
-                    recordLengthBytes += length;
-                } else if ( type.equals("double") ) {
-                    recordLengthBytes += 8 * length;
-                } else if ( type.equals("int") ) {
-                    recordLengthBytes += 4 * length;
-                }
-                
-            } catch (JSONException ex) {
-                Logger.getLogger(ParameterSubsetBinaryDataInputStream.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        return recordLengthBytes;
-    }
     
     /**
      * 
@@ -85,7 +46,7 @@ public class ParameterSubsetBinaryDataInputStream extends InputStream {
         this.nfields= fields.length;
         this.ins= ins;
         try {
-            nextRec= new byte[ bytesPerRec(info) ];
+            nextRec= new byte[ HapiUtil.bytesPerRec(info) ];
         } catch (JSONException ex) {
             throw new RuntimeException(ex);
         }
