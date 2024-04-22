@@ -68,7 +68,7 @@ public class HapiCache2024 {
         URL url= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile() );
         int ihapi= tmpUrl.getFile().lastIndexOf( "hapi" );
         URL host= new URL( tmpUrl.getProtocol(), tmpUrl.getHost(), tmpUrl.getFile().substring(0,ihapi+4) );
-        String start=null,stop=null,dataset=null,parameters=null,format=null,include=null;
+        String start=null,stop=null,dataset=null,parameters=null,format="csv",include=null;
         String query= tmpUrl.getQuery();
         if ( query!=null ) {
             String[] ss= query.split("&");
@@ -293,7 +293,8 @@ public class HapiCache2024 {
         String path= request.url().getPath();
         
         if ( path.endsWith("data") ) {
-            switch (request.format()) {
+            String format= request.format();
+            switch (format) {
                 case "csv":
                     return getInputStreamCSV(tmpUrl);
                 case "binary":
