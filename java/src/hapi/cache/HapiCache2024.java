@@ -132,8 +132,8 @@ public class HapiCache2024 {
     /**
      * for a "data" URL, which has the most degrees of freedom, find a cache file which can be used.
      * @param request
-     * @param exactTime
-     * @param exactParams
+     * @param exactTime find the file using the exact time, not a superset.
+     * @param exactParams find the file using the exact parameters, not a superset.
      * @return CacheHit structure showing the cache files to use, which may not necessarily be downloaded yet.
      * @throws ParseException 
      */
