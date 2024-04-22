@@ -481,7 +481,7 @@ public class HapiCache2024 {
                     URL headerUrl= infoForData(request);
                     InputStream ins= getInputStream(headerUrl);
                     return new ConcatenateInputStream( 
-                        new PrepHeaderInputStreamProvider(parameters,false,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
+                        new PrepHeaderInputStreamProvider(parameters,true,ins), new SimpleInputStreamProvider( new FileInputStream(cacheFile) ) );
                 } else {
                     return new FileInputStream(cacheFile);
                 }
