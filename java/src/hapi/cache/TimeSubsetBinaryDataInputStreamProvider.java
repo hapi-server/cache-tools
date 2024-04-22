@@ -120,6 +120,9 @@ public class TimeSubsetBinaryDataInputStreamProvider implements InputStreamProvi
                     if ( nextRec==null ) return null;
                 }
                 if ( compare( nextRec, stop )>=0 ) {
+                    new String(nextRec,"UTF-8");
+                    new String(start,"UTF-8");
+                    new String(stop,"UTF-8");
                     return null;
                 }
             }

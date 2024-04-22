@@ -54,4 +54,35 @@ public class HapiUtil {
         return recordLengthBytes;
     }
     
+    /**
+     * return the header for a subset of the parameters
+     * @param json
+     * @param parameterNames
+     * @return 
+     */
+    public static String subsetParameters( String json, String[] parameterNames ) {
+        try {
+            JSONObject jo= new JSONObject( json );
+            if ( parameterNames!=null ) {
+                JSONArray parameters= jo.getJSONArray("parameters");
+                JSONArray newParameters= new JSONArray();
+                int ip=0;
+                int ipout=0;
+                for ( int i=0; ip<parameterNames.length && i<parameters.length(); i++ ) {
+                    JSONObject parameterObject= parameters.getJSONObject(i);
+                    String parameterName= parameterObject.getString("name");
+                    if ( i==0 || parameterName.equals(parameterNames[ip]) ) { // always include time, and it need not be in parameter names
+                        newParameters.put(ipout,parameterObject);
+                        ipout++;
+                        if ( parameterName.equals(parameterNames[ip]) ) ip++;
+                    }
+                }
+                jo.put("parameters",newParameters);
+            }
+            return jo.toString(4);
+        } catch (JSONException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+    
 }

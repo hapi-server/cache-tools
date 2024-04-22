@@ -283,8 +283,9 @@ public class HapiCache2024 {
     }
     
     /**
-     * return an InputStream for the URL.  This might come from the remote site or from a locally cached file.
-     * @param tmpUrl
+     * return an InputStream for the URL.  This might come from the remote site or from a locally cached file.  This
+     * routine is called once per HAPI call, so multiple days will be supported with ContatenateInputStream, for example.
+     * @param tmpUrl the HAPI call
      * @return
      * @throws IOException 
      */
@@ -339,11 +340,23 @@ public class HapiCache2024 {
         
     }
     
+    /**
+     * return the info which should be at the top of the data request, and used to
+     * parse a stream.  This may have a subset of the parameters.
+     * @param request
+     * @return
+     * @throws IOException 
+     */
     private String infoJsonForData( HapiRequest request ) throws IOException {
         URL infoUrl= infoForData(request);
         InputStream ins= infoUrl.openStream();
         byte[] infoBytes= ins.readAllBytes();
-        return new String( infoBytes, "UTF-8" );
+        String infoString= new String( infoBytes, "UTF-8" );
+        if ( request.parameters()!=null ) {
+            return HapiUtil.subsetParameters( infoString, request.parameters().split(",",-2) );  //time always
+        } else {
+            return infoString;
+        }
     }
     
     /**

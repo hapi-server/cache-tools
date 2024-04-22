@@ -6,13 +6,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 /**
  * read from the source input stream, inserting comment (#) characters before
- * each line.  This is needed when inserting the header.
+ * each line.  This is needed when inserting the header.  This also does the
+ * parameter subset operation on the header.
  * @author jbf
  * @see ParameterSubsetCsvDataInputStream which does a similar modification to the stream
  */
@@ -24,6 +24,7 @@ public class PrepHeaderInputStreamProvider implements InputStreamProvider {
     /**
      * 
      * @param parameterNames 
+     * @param addComment add a hash comment character (#) before the header
      * @param ins
      */
     public PrepHeaderInputStreamProvider( String[] parameterNames, boolean addComment, InputStream ins ) {
@@ -31,20 +32,8 @@ public class PrepHeaderInputStreamProvider implements InputStreamProvider {
             this.addComment= addComment;
             String json= new String( ins.readAllBytes(), "UTF-8" );
             ins.close();
+            json= HapiUtil.subsetParameters( json, parameterNames );
             JSONObject jo= new JSONObject( json );
-            if ( parameterNames!=null ) {
-                JSONArray parameters= jo.getJSONArray("parameters");
-                JSONArray newParameters= new JSONArray();
-                int ip=0;
-                for ( int i=0; ip<parameterNames.length && i<parameters.length(); i++ ) {
-                    JSONObject parameterObject= parameters.getJSONObject(i);
-                    if ( parameterObject.getString("name").equals(parameterNames[ip]) ) {
-                        newParameters.put(ip,parameterObject);
-                        ip++;
-                    }
-                }
-                jo.put("parameters",newParameters);
-            }
             header= jo;
         } catch (IOException | JSONException ex) {
             throw new RuntimeException(ex);
