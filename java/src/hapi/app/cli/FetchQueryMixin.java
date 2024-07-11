@@ -58,7 +58,7 @@ public class FetchQueryMixin
 	private String timeEndStr;
 
 	@Option(names = { "--includeHeader" }, //
-			description = "Flag that result in the HTTP header being included in the stream.\n")
+			description = "Flag that info JSON should be included in the stream.\n")
 	private boolean includeHeader;
 
 	/**
