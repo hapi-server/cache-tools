@@ -35,7 +35,7 @@ public class AppHapiCache
 {
 	// Constants
 	/** Defines the formal hapi-cache details */
-	private static final AppInfo HapiCacheAppInfo = new AppInfo("HAPI-Cache", "0.0.2");
+	private static final AppInfo HapiCacheAppInfo = new AppInfo("HAPI-Cache", "0.0.3");
 
 	// Picocli Arguments
 	@Mixin
@@ -75,10 +75,11 @@ public class AppHapiCache
 
 			tmpCL.parseArgs(aArgArr);
 
-			// Validate the action args
+			// Validate various command line options
 			app.argActionMixin.validate(tmpCL);
+			app.argCacheDirectiveMixin.validate(tmpCL);
 
-			// Validate the parameter args if action == fetchOnce
+			// Validate FetchQuery args if action == fetchOnce
 			if (app.argActionMixin.fetchOnce == true)
 			{
 				if (app.argFetchQueryMixin != null)

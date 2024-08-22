@@ -34,8 +34,6 @@ public class HapiEndpointUtil
 
 	/**
 	 * Utility method that will return the HAPI fetch (endpoint) URL for the specified HAPI request.
-	 * <p>
-	 * If there are no issues then an empty list will be returned.
 	 */
 	public static URL formFetch(URL aServer, SpecVersion aSpecVersion, FetchQuery aFetchQuery)
 	{
@@ -109,17 +107,17 @@ public class HapiEndpointUtil
 		if (pathStr.contains("/hapi/") == false)
 			retFailL.add(ERR_FETCH_NEEDS_HAPI_PATH);
 
-        if ( aUrl.getPath().endsWith("about") 
-                            || aUrl.getPath().endsWith("capabilities") 
+        if ( aUrl.getPath().endsWith("about")
+                            || aUrl.getPath().endsWith("capabilities")
                             || aUrl.getPath().endsWith("catalog") ) {
             return retFailL;
         }
-            
+
 		// Ensure we have a valid query string
 		var queryStr = aUrl.getQuery();
 		if (queryStr == null)
 			retFailL.add(ERR_FETCH_NEEDS_QUERY);
-                    
+
 		else if (queryStr.isBlank() == true)
 			retFailL.add(ERR_FETCH_NEEDS_QUERY_NON_EMPTY);
 		else
@@ -157,7 +155,7 @@ public class HapiEndpointUtil
 				{
 					if (aToken.startsWith("dataset=") == true)
 						cntId++;
-                    else if (aToken.startsWith("id=") ==true ) 
+                    else if (aToken.startsWith("id=") ==true )
                         cntId++;
 					else if (aToken.startsWith("start=") == true)
 						cntTimeMin++;
@@ -168,7 +166,7 @@ public class HapiEndpointUtil
 					else if (aToken.startsWith("include=") == true)
 						; // cntIgnored++;
 					else if (aToken.startsWith("format=") == true)
-                        ;                    
+                        ;
 					else
 						unknownL.add(aToken.split("=")[0]);
 				}

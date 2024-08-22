@@ -15,7 +15,7 @@ import picocli.CommandLine.ParameterException;
 /**
  * Object which defines the (Picocli) arguments that allow specification of a HAPI fetch query.
  * <p>
- * The following exclusive argument groups are supported: [--url] or [--sever, --dataset, --format, --parameters,
+ * The following exclusive argument groups are supported: [--url] or [--server, --dataset, --format, --parameters,
  * --start, --stop, --includeHeader]
  *
  * @author lopeznr1
@@ -49,11 +49,11 @@ public class FetchQueryMixin
 			description = "Target parameters from the HAPI dataset.")
 	private List<String> parameterL;
 
-	@Option(names = { "--start" }, paramLabel = "<time>", //
+	@Option(names = { "--start" }, paramLabel = "<aTime>", //
 			description = "The start time (of the HAPI data).")
 	private String timeBegStr;
 
-	@Option(names = { "--stop" }, paramLabel = "<time>", //
+	@Option(names = { "--stop" }, paramLabel = "<aTime>", //
 			description = "The stop time (of the HAPI data).")
 	private String timeEndStr;
 
