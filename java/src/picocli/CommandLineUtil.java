@@ -68,10 +68,14 @@ public class CommandLineUtil
 				following:
 				[1] A relative duration such that:
 				        N{d,h,m,s}
-				    where N represents a number and the unit character {d, h, m, s}
+				    where N represents a number and the unit character {d,h,m,s}
 				    corresponds to (days, hours, minutes, seconds).
 
-				[2] A duration since an explicit time such as:
+				[2] A relative duration expressed as an ISO-8601 string. Example:
+				        P2DT-3H4M
+				        PT15M
+
+				[3] A duration since an explicit time such as:
 				        yyyy-MM-dd
 				        yyyy-MM-ddThh:mm:ss
 

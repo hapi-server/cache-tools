@@ -1,6 +1,7 @@
 package hapi.app.cli;
 
 import java.io.File;
+import java.time.LocalDateTime;
 
 import hapi.cache.CacheDirective;
 import picocli.CommandLine;
@@ -18,6 +19,8 @@ public class CacheDirectiveMixin
 {
 	// Constants: Error messages
 	private static final String ERR_STALE_AFTER_INVALID_INPUT = "--stale-after: Invalid input. Please run with --help-arg for details on argument aDura";
+	private static final String ERR_STALE_AFTER_AS_FUTURE_DATETIME = "--stale-after: The provided explicit time is in the future. It must be in the past.";
+	private static final String ERR_STALE_AFTER_AS_NEGATIVE_DURATION = "--stale-after: The provided relative duration is negative. It must be positive.";
 
 	@Option(names = { "--cache-dir" }, paramLabel = "<aPath>", //
 			description = "Path to the top level HAPI cache", required = true)
@@ -54,8 +57,25 @@ public class CacheDirectiveMixin
 		// Ensure the --stale-after option is valid (if it is defined)
 		if (staleAfter != null)
 		{
-			if (ArgDuraUtil.parseAsDuration(staleAfter) == null && ArgDuraUtil.parseAsLocalDateTime(staleAfter) == null)
-				throw new ParameterException(aCommandLine, ERR_STALE_AFTER_INVALID_INPUT);
+			// See if expressed as a relative (positive) Duration
+			var tmpDuration = ArgDuraUtil.parseAsDuration(staleAfter);
+			if (tmpDuration != null)
+				if (tmpDuration.isNegative() == true)
+					throw new ParameterException(aCommandLine, ERR_STALE_AFTER_AS_NEGATIVE_DURATION);
+				else
+					return;
+
+			// See if expressed as a LocalDateTime (in the past)
+			var currDateTime = LocalDateTime.now();
+			var tmpDateTime = ArgDuraUtil.parseAsLocalDateTime(staleAfter);
+			if (tmpDateTime != null)
+				if (tmpDateTime.isAfter(currDateTime) == true)
+					throw new ParameterException(aCommandLine, ERR_STALE_AFTER_AS_FUTURE_DATETIME);
+				else
+					return;
+
+			// We do not recognize the input
+			throw new ParameterException(aCommandLine, ERR_STALE_AFTER_INVALID_INPUT);
 		}
 
 		// Nothing else to validate

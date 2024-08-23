@@ -16,16 +16,31 @@ public class ArgDuraUtil
 	/**
 	 * Parses the specified input string and returns it as a function of {@link Duration}.
 	 * <p>
-	 * Input strings will be parsed with the following specification: An integer followed by a unit char (d, h, m, s)
-	 * which corresponds to (days, hours, minutes, seconds).
-	 * <p>
+	 * Input can be specified in one of 2 ways:
+	 * <ul>
+	 * <li>As an ISO-8601 duration
+	 * <li>As a string N{d,h,m,s} where N represents a number and the unit char {d,h,m,s} corresponds to (days, hours,
+	 * minutes, seconds)
+	 * </ul>
 	 * On failure null will be returned.
 	 */
 	public static Duration parseAsDuration(String aInputStr)
 	{
+		// Bail if the string is not valid or sufficient length
 		if (aInputStr == null || aInputStr.length() < 2)
 			return null;
 
+		// Try parsing as ISO-8601
+		try
+		{
+			return Duration.parse(aInputStr);
+		}
+		catch (DateTimeParseException aExp)
+		{
+			; // Nothing to do
+		}
+
+		// Try parsing as custom format: N{d,h,m,s}
 		var lastIdx = aInputStr.length() - 1;
 
 		var numVal = 0L;
@@ -40,7 +55,6 @@ public class ArgDuraUtil
 		}
 
 		var lastChar = aInputStr.charAt(lastIdx);
-
 		switch (lastChar)
 		{
 			case 'd':
