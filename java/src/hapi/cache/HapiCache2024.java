@@ -55,10 +55,10 @@ public class HapiCache2024 {
      */
     public HapiCache2024(CacheDirective aCacheDirective) {
         cacheDirective = aCacheDirective;
-        Duration d= cacheDirective.expireAfterDur();
+        Duration d= cacheDirective.getStaleAfterAsDuration();
         if ( d!=null ) {
             lastModifiedRequirement =  Instant.now().toEpochMilli() 
-                - cacheDirective.expireAfterDur().getSeconds()*1000 - cacheDirective.expireAfterDur().getNano()/1000000;
+                - d.getSeconds()*1000 - d.getNano()/1000000;
         } else {
             lastModifiedRequirement = Long.MIN_VALUE;
         }
