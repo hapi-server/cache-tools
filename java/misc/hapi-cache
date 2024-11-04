@@ -1,0 +1,104 @@
+#! /usr/bin/env python3
+
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+
+# Location to the Java executable
+javaExe = 'java'
+
+def handleSignal(signal, frame):
+	"""Signal handler, typically used to capture ctrl-c."""
+	print('User aborted processing!')
+	sys.exit(0)
+
+
+def errPrintln(aMessage=''):
+	"""Print the specified string with a trailing newline to stderr. Each tab
+	character will be replaced with: 3 spaces"""
+	aMessage = aMessage.replace('\t', '   ')
+	sys.stderr.write(aMessage + '\n')
+
+
+if __name__ == "__main__":
+	# Logic to capture Ctrl-C and bail
+	signal.signal(signal.SIGINT, handleSignal)
+
+	# Require Python version 3.4 or later
+	targVer = (3, 4)
+	if sys.version_info < targVer:
+		print('The installed version of python is too old. Please upgrade.')
+		print('   Current version: ' + '.'.join(str(i) for i in sys.version_info))
+		print('   Require version: ' + '.'.join(str(i) for i in targVer))
+		sys.exit(-1)
+
+	# Define the version of Java needed
+	javaVerNeed = 17.0
+
+	# Check to make sure Java is installed.
+	try:
+		evalPath = shutil.which(javaExe);
+		if evalPath == None:
+			errPrintln('Failed while trying to locate java. Please install Java {} or later'.format(javaVerNeed))
+			errPrintln('   Java Executable: {}'.format(javaExe))
+			sys.exit(-1)
+	except Exception:
+		pass
+
+	# Check for Java version 17 (or later)
+	try:
+		verStrRaw = subprocess.check_output([javaExe, '-version'], stderr=subprocess.STDOUT)
+		verStrRaw = verStrRaw.decode("utf-8")
+		pattern = '\"(\d+)(\.\d+)*.*\"'
+		verStrFull = re.search(pattern, verStrRaw).group().strip('"')
+		pattern = '(\d+)(\.\d+){0,1}'
+		verStrPart = re.search(pattern, verStrFull).group()
+		javaVerCurr = float(verStrPart)
+		if javaVerCurr < javaVerNeed:
+			errPrintln('Dated version of Java detected...')
+			errPrintln('   Installed version of Java is too old. Java {} or later is required.'.format(javaVerNeed))
+			errPrintln('   Installed version: {}'.format(verStrFull))
+			sys.exit(-1)
+	except Exception as aExp:
+		print('Failed to determine version of Java...')
+		print('   Note Java 17 or later is required.')
+		print('   Proceeding with launching of application.\n')
+
+	# Determine the location of the library path
+	rootPath = os.path.dirname(sys.argv[0])
+	libPath = os.path.join(rootPath, 'lib')
+	if os.path.isdir(libPath) == False:
+		libPathFail = libPath;
+		rootPath = os.path.dirname(rootPath)
+		libPath = os.path.join(rootPath, 'lib')
+		if os.path.isdir(libPath) == False:
+			errPrintln('Application does not appear to be packaged properly.\n')
+			errPrintln('Failed to locate library path. Tried: ')
+			errPrintln('\t' + libPathFail)
+			errPrintln('\t' + libPath)
+			errPrintln('')
+			exit(-1)
+
+	# Execute the application
+	try:
+		# Form the command to be executed
+		libPathStr = libPath + '/*'
+		exeCmd = [javaExe, '-cp', libPathStr, 'hapi.cache.AppHapiCache']
+		exeCmd += sys.argv[1:]
+
+#		print('Command: {}'.format(exeCmd))
+		eCode = subprocess.call(exeCmd)
+		if eCode != 0:
+			print('\nThe application did not properly execute. Error code: {}\n'.format(eCode))
+	except Exception as aExp:
+		print("{}".format(aExp) + '\n')
+		errPrintln('\tFailed to launch the hapi-cache application!')
+
+		exeStr = ' '.join(exeCmd)
+		errPrintln('\t\tExecution Command:')
+		errPrintln('\t\t{}\n'.format(exeStr))
+		exit(-1)
+
