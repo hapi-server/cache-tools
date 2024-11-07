@@ -204,8 +204,14 @@ public class HapiCache2024 {
                     days[i]= basePath + day + params + "." + format;  
                     URL url= request.url();
                     Map<String,String> pp= paramSplit(url.getQuery());
-                    pp.put( "start", start2 );
-                    pp.put( "stop", stop2);
+                    if ( pp.containsKey("start") ) {
+                        pp.put( "start", start2 );
+                        pp.put( "stop", stop2);
+                    } else {
+                        pp.put( "time.min", start2 );
+                        pp.put( "time.max", stop2);
+                    }
+                    
                     try {
                         urls[i]= new URL( request.host() + "/data" + "?" + paramJoin(pp) );
                     } catch (MalformedURLException ex) {
@@ -219,6 +225,20 @@ public class HapiCache2024 {
                 result.subsetTime= true;
                 return result;
             }
+        }
+        
+    }
+
+    /**
+     * TODO: this is not implemented.
+     * @param request
+     * @return 
+     */
+    private String getVersionFor(HapiRequest request) {
+        if ( request.host().getHost().equals("cdaweb.gsfc.nasa.gov") ) {
+            return "2.0";
+        } else {
+            return "2.1";
         }
         
     }
@@ -404,9 +424,16 @@ public class HapiCache2024 {
             } else {
                 CacheHit hit2=pathForUrl(request,false,true);
                 StringBuilder sdataUrl= new StringBuilder( request.host().toString() );
-                sdataUrl.append("/data?id=").append(request.dataset())
-                    .append("&start=").append(request.start())
-                    .append("&stop=").append(request.stop());
+                String vers= getVersionFor( request );
+                if ( vers.startsWith("4.") ) { //TODO
+                    sdataUrl.append("/data?id=").append(request.dataset())
+                        .append("&start=").append(request.start())
+                        .append("&stop=").append(request.stop());
+                } else {
+                    sdataUrl.append("/data?id=").append(request.dataset())
+                        .append("&time.min=").append(request.start())
+                        .append("&time.max=").append(request.stop());
+                }
                 if ( request.parameters()!=null ) {
                     sdataUrl.append("&parameters=").append(request.parameters());
                 }
