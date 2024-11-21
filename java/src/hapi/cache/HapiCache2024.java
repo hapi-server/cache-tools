@@ -329,6 +329,9 @@ public class HapiCache2024 {
                 CacheHit hit= pathForUrl( request, false, false );
                 assert ( hit.files.length!=1 );
                 File base = cacheDirective.rootCacheDir();
+                if ( base.toString().equals("") ) {
+                    base = new File( new File( System.getProperty("user.home") ), "hapi-cache"  );
+                }
                 File cacheFile= new File( base +  File.separator + hit.files[0] );
                 if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
                     return new FileInputStream(cacheFile);
@@ -344,6 +347,9 @@ public class HapiCache2024 {
                 CacheHit hit= pathForUrl( request, false, false );
                 assert ( hit.files.length!=1 );
                 File base = cacheDirective.rootCacheDir();
+                if ( base.toString().equals("") ) {
+                    base = new File( new File( System.getProperty("user.home") ), "hapi-cache"  );
+                }
                 File cacheFile= new File( base +  File.separator + hit.files[0] );
                 if ( cacheFile.exists() && hit.files.length==1 && cacheFile.lastModified()>lastModifiedRequirement ) {
                     return new FileInputStream(cacheFile);
@@ -402,6 +408,10 @@ public class HapiCache2024 {
     private InputStream getInputStreamCSV(URL tmpUrl) throws IOException {
         try {
             File base = cacheDirective.rootCacheDir();
+            if ( base.toString().equals("") ) {
+                base= new File( new File( System.getProperty("user.home") ), "hapi-cache"  );
+            }
+            
             HapiRequest request= parseHapiRequest(tmpUrl);
             String[] parameters;
             if ( request.parameters()==null ) {
@@ -493,6 +503,10 @@ public class HapiCache2024 {
     private InputStream getInputStreamBinary(URL tmpUrl) throws IOException {
         try {
             File base = cacheDirective.rootCacheDir();
+            if ( base.toString().equals("") ) {
+                base = new File( new File( System.getProperty("user.home") ), "hapi-cache"  );
+            }
+            
             HapiRequest request= parseHapiRequest(tmpUrl);
             String[] parameters;
             if ( request.parameters()==null ) {

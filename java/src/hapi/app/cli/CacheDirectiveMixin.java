@@ -23,7 +23,7 @@ public class CacheDirectiveMixin
 	private static final String ERR_STALE_AFTER_AS_NEGATIVE_DURATION = "--stale-after: The provided relative duration is negative. It must be positive.";
 
 	@Option(names = { "--cache-dir" }, paramLabel = "<aPath>", //
-			description = "Path to the top level HAPI cache", required = true)
+			description = "Path to the top level HAPI cache", required = true, defaultValue = "")
 	private File pathCacheDir;
 
 	@Option(names = { "--stale-after" }, paramLabel = "<aDura>", //

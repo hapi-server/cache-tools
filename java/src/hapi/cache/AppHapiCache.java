@@ -75,6 +75,15 @@ public class AppHapiCache
 
 			tmpCL.parseArgs(aArgArr);
 
+            for ( String s: aArgArr ) {
+                //TODO: this also needs to be done with other parameters.
+                if ( s.startsWith("--url=") ) {
+                    if ( s.contains("&start=") || s.contains("&stop=") ) {
+                        app.argSpecVersion= SpecVersion.Version3;
+                    }
+                }
+            }
+            
 			// Validate various command line options
 			app.argActionMixin.validate(tmpCL);
 			app.argCacheDirectiveMixin.validate(tmpCL);
