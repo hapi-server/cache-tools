@@ -1,1 +1,0 @@
-hapi-cache-test-Stdin-1a.txt
