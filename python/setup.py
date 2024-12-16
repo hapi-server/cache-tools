@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-install_requires = ["fastapi"]
+install_requires = ["fastapi", "uvicorn"]
 
 setup(
     name='hapi-cache-server',
